@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Choppas 26' · Flashcards</title>
+<style>
+:root{--bg:#0f1220;--card:#1b2038;--acc:#ffb347;--ok:#5be39a;--bad:#ff6b6b;--txt:#f4f4f8;--dim:#9aa0b8;--well:#2a3050}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;justify-content:center;padding:16px}
+.wrap{width:100%;max-width:480px;display:flex;flex-direction:column;gap:14px}
+.hide{display:none!important}
+h1{font-size:24px;margin:6px 0 0}
+.sub{color:var(--dim);font-size:14px;margin:-8px 0 0}
+.tabs{display:flex;gap:6px;background:var(--well);padding:4px;border-radius:14px}
+.tabs button{flex:1;background:none;color:var(--dim);padding:10px;font-size:15px}
+.tabs button.on{background:var(--card);color:var(--txt)}
+button{font:inherit;font-size:17px;padding:14px;border-radius:14px;border:0;background:var(--acc);color:#1a1200;font-weight:700;cursor:pointer}
+button.ghost{background:var(--well);color:var(--txt)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;color:var(--dim);font-size:14px}
+.row button{flex:1}
+/* flip card */
+.scene{perspective:1200px;height:440px;cursor:pointer;user-select:none}
+.flip{position:relative;width:100%;height:100%;transition:transform .5s;transform-style:preserve-3d}
+.flip.back{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:20px;background:var(--card);overflow:hidden;display:flex;flex-direction:column}
+.face img{width:100%;height:100%;object-fit:cover;background:#000}
+.face.front .hint{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:13px;color:#fff;text-shadow:0 1px 4px #000}
+.face.rear{transform:rotateY(180deg);justify-content:center;padding:28px;gap:18px}
+.face.rear img{width:120px;height:120px;border-radius:50%;align-self:center}
+.name{font-size:30px;font-weight:800;text-align:center}
+.kv{display:flex;flex-direction:column;gap:4px}
+.kv span{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--acc);font-weight:700}
+.kv b{font-size:19px;font-weight:500}
+/* quiz */
+.qimg{width:100%;height:340px;object-fit:cover;border-radius:20px;background:#000}
+.opts{display:flex;flex-direction:column;gap:10px}
+.opt{background:var(--well);color:var(--txt);font-weight:500;text-align:left}
+.opt.right{background:var(--ok);color:#06210f}
+.opt.wrong{background:var(--bad);color:#2a0606}
+.reveal{background:var(--card);border-radius:14px;padding:12px 14px;font-size:15px;color:var(--dim)}
+.reveal b{color:var(--txt)}
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{background:var(--card);border-radius:14px;overflow:hidden;font-size:12px;cursor:pointer}
+.tile img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.tile div{padding:6px 8px;line-height:1.3}
+.tile small{color:var(--dim)}
+input{font:inherit;font-size:16px;padding:12px 14px;border-radius:12px;border:0;background:var(--well);color:var(--txt);width:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Choppas 26'</h1>
+  <p class="sub" id="count"></p>
+  <div class="tabs">
+    <button data-m="cards" class="on">Flashcards</button>
+    <button data-m="quiz">Quiz</button>
+    <button data-m="all">Everyone</button>
+  </div>
+
+  <!-- FLASHCARDS -->
+  <section id="cards" class="wrap">
+    <div class="scene" id="scene">
+      <div class="flip" id="flip">
+        <div class="face front"><img id="fImg" alt="Who is this?"><div class="hint">Tap to flip · swipe for next</div></div>
+        <div class="face rear">
+          <img id="bImg" alt="">
+          <div class="name" id="bName"></div>
+          <div class="kv"><span>Hometown</span><b id="bHome"></b></div>
+          <div class="kv"><span>High school</span><b id="bHS"></b></div>
+        </div>
+      </div>
+    </div>
+    <div class="row"><button class="ghost" id="prev">‹ Prev</button><span id="pos"></span><button class="ghost" id="next">Next ›</button></div>
+    <button class="ghost" id="shuf">Shuffle</button>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="quiz" class="wrap hide">
+    <div class="row"><span id="qScore"></span><span id="qStreak"></span></div>
+    <img class="qimg" id="qImg" alt="Who is this?">
+    <div class="opts" id="qOpts"></div>
+    <div class="reveal hide" id="qInfo"></div>
+    <button class="hide" id="qNext">Next</button>
+  </section>
+
+  <!-- EVERYONE -->
+  <section id="all" class="wrap hide">
+    <input id="search" placeholder="Search name, town, or school">
+    <div class="grid" id="grid"></div>
+  </section>
+</div>
+
+<script>
+const P=[
+{"n":"Ethan Ambat","h":"Newport Beach, CA","s":"Newport Harbor High School"},
+{"n":"Mio Zuta","h":"Marin, CA","s":"Redwood High School"},
+{"n":"Quinten Neu","h":"Gilroy, CA","s":"Valley Christian High School"},
+{"n":"Zack Shaffer","h":"San Anselmo, CA","s":"Marin Catholic High School"},
+{"n":"Skyler Henry","h":"Pasadena, CA","s":"La Cañada High School"},
+{"n":"Savion Saint-Prix","h":"San Francisco, CA","s":"Lick-Wilmerding High School"},
+{"n":"Bronson Borella","h":"San Ramon, CA","s":"California High School"},
+{"n":"Everett Cross","h":"San Ramon, CA","s":"California High School"},
+{"n":"Danny Paster","h":"Minneapolis, MN","s":"Breck School"},
+{"n":"Thomas Gibson","h":"Gainesville, FL","s":"Oak Hall School"},
+{"n":"Eli Soileau","h":"New Orleans, LA","s":"Willow School"},
+{"n":"Ari Wolff","h":"Mercer Island, WA","s":"Mercer Island High School"},
+{"n":"Frank Burn","h":"Seattle, WA","s":"Shorewood High School"},
+{"n":"Nate Siderius","h":"Seattle, WA","s":"Bishop Blanchet High School"},
+{"n":"Braylon Bennett","h":"Redding, CT","s":"Joel Barlow High School"},
+{"n":"Michael Asher","h":"Lake Oswego, OR","s":"Lakeridge High School"},
+{"n":"Tomás de Andraca","h":"Eugene, OR","s":"South Eugene High School"},
+{"n":"Jack Von Ammon","h":"Eugene, OR","s":"South Eugene High School"},
+{"n":"Elijah Keith","h":"Tiburon, CA","s":"Tamalpais High School"},
+{"n":"Milan Schaffer","h":"Mill Valley, CA","s":"Tamalpais High School"},
+{"n":"Kai Smith","h":"Novato, CA","s":"Archie Williams High School"},
+{"n":"Diego Cobarrubia","h":"Bend, OR","s":"Bend High School"},
+{"n":"Luke Boyle","h":"Norwalk, CT","s":"Brien McMahon High School"},
+{"n":"Samuel Gay","h":"Ridgefield, CT","s":"Ridgefield High School"},
+{"n":"Soren Patokoski","h":"Beaverton, OR","s":"Southridge High School"},
+{"n":"Liam Armstrong","h":"Oakland, CA","s":"Bishop O'Dowd High School"},
+{"n":"Valentino Fierros","h":"San Francisco, CA","s":"Sacred Heart Cathedral Prep"},
+{"n":"Donavon Wertenbroek","h":"Newport Beach, CA","s":"Newport Harbor High School"},
+{"n":"Nick Durb","h":"Santa Barbara, CA","s":"Newbury Park High School"},
+{"n":"Luke Herbert","h":"Hailey, ID","s":"Wood River High School"},
+{"n":"Gus Nelson","h":"Eugene, OR","s":"South Eugene High School"}
+].map((p,i)=>({...p,img:`photos/${String(i+1).padStart(2,'0')}.jpg`}));
+
+const $=id=>document.getElementById(id);
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+$('count').textContent=`${P.length} people · photo on the front, info on the back`;
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>mode(b.dataset.m));
+function mode(m){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  ['cards','quiz','all'].forEach(s=>$(s).classList.toggle('hide',s!==m));
+  if(m==='quiz'&&!q.cur)qNew();
+}
+
+/* ---------- flashcards ---------- */
+let order=P.map((_,i)=>i),pos=0;
+function showCard(){
+  const p=P[order[pos]];
+  $('flip').classList.remove('back');
+  // swap content after the flip-back so the answer doesn't flash
+  setTimeout(()=>{
+    $('fImg').src=p.img;$('bImg').src=p.img;
+    $('bName').textContent=p.n;$('bHome').textContent=p.h;$('bHS').textContent=p.s;
+  },$('flip').dataset.started?180:0);
+  $('flip').dataset.started=1;
+  $('pos').textContent=`${pos+1} / ${order.length}`;
+}
+const go=d=>{pos=(pos+d+order.length)%order.length;showCard()};
+$('scene').onclick=()=>$('flip').classList.toggle('back');
+$('prev').onclick=()=>go(-1);
+$('next').onclick=()=>go(1);
+$('shuf').onclick=()=>{order=shuffle(order);pos=0;showCard()};
+let tx=null;
+$('scene').addEventListener('touchstart',e=>tx=e.touches[0].clientX,{passive:true});
+$('scene').addEventListener('touchend',e=>{
+  if(tx==null)return;const dx=e.changedTouches[0].clientX-tx;tx=null;
+  if(Math.abs(dx)>50){e.preventDefault();go(dx<0?1:-1)}
+});
+document.addEventListener('keydown',e=>{
+  if($('cards').classList.contains('hide')||e.target.tagName==='INPUT')return;
+  if(e.key==='ArrowRight')go(1);
+  if(e.key==='ArrowLeft')go(-1);
+  if(e.key===' '){e.preventDefault();$('flip').classList.toggle('back')}
+});
+showCard();
+P.forEach(p=>{const i=new Image();i.src=p.img}); // preload
+
+/* ---------- quiz ---------- */
+const q={deck:[],cur:null,right:0,total:0,streak:0,done:false};
+function qNew(){
+  if(!q.deck.length)q.deck=shuffle(P.map((_,i)=>i));
+  q.cur=q.deck.pop();q.done=false;
+  const p=P[q.cur];
+  const opts=shuffle([q.cur,...shuffle(P.map((_,i)=>i).filter(i=>i!==q.cur)).slice(0,3)]);
+  $('qImg').src=p.img;
+  $('qOpts').innerHTML='';
+  opts.forEach(i=>{
+    const b=document.createElement('button');
+    b.className='opt';b.textContent=P[i].n;b.dataset.ok=i===q.cur?1:0;
+    b.onclick=()=>qPick(b);
+    $('qOpts').append(b);
+  });
+  $('qInfo').classList.add('hide');$('qNext').classList.add('hide');
+  qStats();
+}
+function qPick(b){
+  if(q.done)return;q.done=true;q.total++;
+  const ok=b.dataset.ok==='1';
+  [...$('qOpts').children].forEach(n=>{if(n.dataset.ok==='1')n.classList.add('right')});
+  if(ok){q.right++;q.streak++}else{b.classList.add('wrong');q.streak=0;q.deck.unshift(q.cur)} // missed ones come back
+  const p=P[q.cur];
+  $('qInfo').innerHTML='';
+  const t=document.createElement('div');
+  t.innerHTML='<b></b> · <span></span> · <span></span>';
+  t.children[0].textContent=p.n;t.children[1].textContent=p.h;t.children[2].textContent=p.s;
+  $('qInfo').append(t);$('qInfo').classList.remove('hide');
+  $('qNext').classList.remove('hide');
+  qStats();
+}
+function qStats(){
+  $('qScore').textContent=`${q.right} / ${q.total} correct`;
+  $('qStreak').textContent=q.streak>1?`🔥 ${q.streak} in a row`:'';
+}
+$('qNext').onclick=qNew;
+
+/* ---------- everyone ---------- */
+function grid(f=''){
+  f=f.toLowerCase();
+  $('grid').innerHTML='';
+  P.forEach((p,i)=>{
+    if(f&&!`${p.n} ${p.h} ${p.s}`.toLowerCase().includes(f))return;
+    const d=document.createElement('div');d.className='tile';
+    const img=document.createElement('img');img.src=p.img;img.alt=p.n;img.loading='lazy';
+    const t=document.createElement('div');
+    const n=document.createElement('b');n.textContent=p.n;
+    const s=document.createElement('small');s.textContent=` ${p.h}`;
+    t.append(n,document.createElement('br'),s);
+    d.append(img,t);
+    d.onclick=()=>{order=P.map((_,k)=>k);pos=i;mode('cards');showCard();setTimeout(()=>$('flip').classList.add('back'),250)};
+    $('grid').append(d);
+  });
+}
+$('search').oninput=e=>grid(e.target.value);
+grid();
+</script>
+</body>
+</html>
